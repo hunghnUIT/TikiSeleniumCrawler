@@ -1,6 +1,6 @@
 from config.db import col_item, col_item_price
 import timing_value
-from settings import SHOPEE, REDIS_TRACKED_ITEMS_HASH_NAME, A_DAY_IN_MS
+from settings import TIKI, REDIS_TRACKED_ITEMS_HASH_NAME, A_DAY_IN_MS
 from services.user import notify_web_service_about_decreased_price
 from config.redis import redis_client as redis
 
@@ -21,17 +21,16 @@ def save_item(found_item, item) -> object:
         updating_item['expired'] = timing_value.expiredTime
         updating_item['currentPrice'] = item['price']
         updating_item['update'] = item['update']
-        updating_item['platform'] = SHOPEE
+        updating_item['platform'] = TIKI
 
         if 'images' in item:
             updating_item['images'] = item['images']
 
         col_item.update_one({'id': item['id']}, {'$set': updating_item})
     else:
-        col_item.insert_one({
+        inserting_item = {
             'id': item['id'],
             'name': item['name'],
-            'sellerId': item['sellerId'],
             'categoryId': item['categoryId'],
             'productUrl': item['productUrl'],
             'rating': item['rating'],
@@ -41,8 +40,12 @@ def save_item(found_item, item) -> object:
             'currentPrice': item['price'],
             'lastPriceChange': 0,
             'update': item['update'],
-            'platform': SHOPEE,
-        })
+            'platform': TIKI,
+        }
+        if 'sellerId' in item:
+            inserting_item['sellerId'] = item['sellerId']
+
+        col_item.insert_one(inserting_item)
 
 
 def save_item_price(item, is_flash_sale) -> None:
@@ -84,14 +87,18 @@ def create_item_price_day_before(item) -> None:
             # Not item['price'] because passed item is item in DB.
             'price': item['currentPrice'],
             'update': item['update'] - A_DAY_IN_MS,
-            'priceChangeInDay': [{'price': item['currentPrice'], 'update': item['update'], 'isFlashSale': False}]
+            'priceChangeInDay': [{
+                'price': item['currentPrice'], 
+                'update': item['update'] - A_DAY_IN_MS, 
+                'isFlashSale': False
+            }]
         })
 
 
 def save_item_to_db(item, is_flash_sale: bool = False) -> None:
-    if (item['id'] and item['name'] and item['sellerId']
-            and (item['rating'] or item['rating'] == 0)
-            and (item['totalReview'] or item['totalReview'] == 0)):
+    if (item['id'] and item['name']
+        and (item['rating'] or item['rating'] == 0)
+        and (item['totalReview'] or item['totalReview'] == 0)):
 
         found_item = col_item.find_one({'id': item['id']})
         save_item(found_item, item)

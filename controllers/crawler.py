@@ -12,14 +12,15 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 # Settings
 from settings import (
-    WAIT_TIME_LOAD_PAGE, NUMBER_PARTS_PAGE_HEIGHT, 
-    CLASS_NAME_CARD_ITEM, MAXIMUM_PAGE_NUMBER, 
+    WAIT_TIME_LOAD_PAGE,
+    CLASS_NAME_CARD_ITEM, MAXIMUM_PAGE_NUMBER,
     LOAD_ITEM_SLEEP_TIME, CLASS_NAME_ITEM_PRICE,
-    HEADLESS, FIREFOX_PROFILE
+    CLASS_NAME_PAGINATION_BUTTONS, CLASS_NAME_BUTTON_NEXT_PAGE,
+    HEADLESS, FIREFOX_PROFILE,
 )
 
 # Functions
-from helper import ( 
+from helper import (
     proccess_category_url,
 )
 from controllers.item import (
@@ -36,10 +37,11 @@ Function receive a category URL at a moment, start at page #1, then crawl to the
 @method     POST
 @body       None
 '''
-def crawl_with_category_url(url:str, jobs_queue: Queue, driver: webdriver = None, is_in_recursive: bool = False):
+def crawl_with_category_url(url: str, jobs_queue: Queue, driver: webdriver = None, is_in_recursive: bool = False):
     timing_value.init_timing_value()
 
-    if not is_in_recursive: # Not in recursive => This function was called the first time to do crawling job.
+    # Not in recursive => This function was called the first time to do crawling job.
+    if not is_in_recursive:
         store_tracked_items_to_redis()
 
     if not driver:
@@ -51,8 +53,6 @@ def crawl_with_category_url(url:str, jobs_queue: Queue, driver: webdriver = None
 
         driver = webdriver.Firefox(options=options, firefox_profile=FIREFOX_PROFILE)
 
-    driver.get(url)
-
     category_id = proccess_category_url(url)
 
     page = 1
@@ -60,25 +60,27 @@ def crawl_with_category_url(url:str, jobs_queue: Queue, driver: webdriver = None
     count = 0 # temp
 
     while True:
+        driver.get(url)
+
         # Format: [{idx: 1, item_info: {item}}, {idx: 6, item_info: {item}}]
         list_items_failed = []
 
         try:
             myElem = WebDriverWait(driver, WAIT_TIME_LOAD_PAGE).until(
                 EC.presence_of_element_located((By.CLASS_NAME, CLASS_NAME_CARD_ITEM)))
-            
+
             # Scroll to deal with lazy load.
             actions = ActionChains(driver)
-            for _ in range(8): # space 8 times = heigh of the document
+            for _ in range(8):  # space 8 times = heigh of the document
                 actions.send_keys(Keys.SPACE).perform()
                 sleep(LOAD_ITEM_SLEEP_TIME)
 
             # query all items
             items = driver.find_elements_by_class_name(CLASS_NAME_CARD_ITEM)
 
-            if len(items) == last_page_item_number and last_page_item_number < 50:
-                print(f'Done crawling category {category_id}, last page: {page - 1}') # start from 1
-                break
+            # if len(items) == last_page_item_number and last_page_item_number < 50:
+            #     print(f'Done crawling category {category_id}, last page: {page - 1}')
+            #     break
 
             if (items):
                 for idx, el in enumerate(items):
@@ -117,24 +119,30 @@ def crawl_with_category_url(url:str, jobs_queue: Queue, driver: webdriver = None
                                 count += 1
                                 del list_items_failed[i]
 
-                list_items_failed = [] # Ignored items still failed after trying again twice.
+                # Ignored items still failed after trying again twice.
+                list_items_failed = []
 
         except TimeoutException:
             print("Loading took too much time!")
             items = []
 
-        print(f'Done crawling page #{page} of category {category_id}. Total item: {count}') # page start from 1
-        page += 1
+        # page start from 1
+        print(f'Done crawling page #{page} of category {category_id}. Total item: {count}')
 
         if page <= MAXIMUM_PAGE_NUMBER:
-            next_page_button = driver.find_element_by_class_name('shopee-icon-button--right')
-            driver.execute_script("arguments[0].scrollIntoView();", next_page_button)
-            ActionChains(driver).click(next_page_button).perform()
-            last_page_item_number = len(items)
-            # continue # this is unnecessary
+            pagination_buttons = driver.find_elements_by_css_selector(CLASS_NAME_PAGINATION_BUTTONS)
+            if not pagination_buttons or (pagination_buttons and not pagination_buttons[-1].find_elements_by_css_selector(CLASS_NAME_BUTTON_NEXT_PAGE)):
+                print(f'Done crawling category {category_id}, last page: {page}')
+                break
+            else:
+                next_page_url = pagination_buttons[-1].find_element_by_tag_name('a').get_attribute('href')
+                url = next_page_url
+                # last_page_item_number = len(items)
         else:
-            print(f'Done crawling category {category_id}, last page: {page - 1}') # start from 1
+            print(f'Done crawling category {category_id}, last page: {page}')
             break
+
+        page += 1
 
     if not jobs_queue.empty():
         url_from_queue = jobs_queue.get()
@@ -142,7 +150,7 @@ def crawl_with_category_url(url:str, jobs_queue: Queue, driver: webdriver = None
         crawl_with_category_url(
             url=url_from_queue, jobs_queue=jobs_queue, driver=driver, is_in_recursive=True)
 
-    if not is_in_recursive: # Not in recursive, can safely quit browser after all task queue is done
+    if not is_in_recursive:  # Not in recursive, can safely quit browser after all task queue is done
         driver.quit()
 
 
@@ -172,7 +180,7 @@ Function receive a item URLs, crawl items one by one and quit browser.
 @method     POST
 @body       { urls: list[str] }
 '''
-def crawl_with_item_urls(urls:List[str], jobs_queue: Queue):
+def crawl_with_item_urls(urls: List[str], jobs_queue: Queue):
     timing_value.init_timing_value()
     store_tracked_items_to_redis()
 

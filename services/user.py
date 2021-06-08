@@ -3,7 +3,7 @@ from settings import RECEIVE_NOTIFICATION_SERVICE_ADDRESS
 
 
 def notify_web_service_about_decreased_price(item_id: int, new_price: int, is_trying_again: bool = False):
-    url = f'{RECEIVE_NOTIFICATION_SERVICE_ADDRESS}?itemId=${item_id}&newPrice=${new_price}&platform=shopee'
+    url = f'{RECEIVE_NOTIFICATION_SERVICE_ADDRESS}?itemId=${item_id}&newPrice=${new_price}&platform=tiki'
     response = requests.get(url)
 
     if response and response.status_code == requests.codes.ok:

@@ -20,7 +20,7 @@ app = FastAPI()
 
 @app.get("/")
 async def hello():
-    return 'Hello from Shopee Selenium'
+    return 'Hello from Tiki Selenium'
 
 @app.post('/crawl-item')
 async def crawl_each_item(body: ListUrlRequestBody) -> None:

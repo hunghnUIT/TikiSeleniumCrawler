@@ -1,3 +1,4 @@
+from re import split
 import time
 from typing import List
 
@@ -7,41 +8,23 @@ conventions = {
 }
 
 
-def process_item_url(url: str) -> object:
-    result = {}
-    # Remove params
-    if url.find('?') > -1:
-        url = url[0:url.find('?')]
-    #  E.g: https://shopee.vn/product/283338743/9918567180?smtt=0.174867900-1616510545.9 // Shop id first, then item id
-    if 'shopee.vn/product/' in url:
-        splitted_by_splash = url.split('/')
+def get_item_id(url: str) -> int:
+    # E.g: https://tiki.vn/dien-thoai-iphone-12-pro-max-128gb-hang-chinh-hang-p70771651.html?src=ss-organic
+    url = url[0:url.find('.html')] # Remove tail after ".html"
+    splitted_url_by_dash = url.split('-')
 
-        result['itemId'] = int(splitted_by_splash[len(splitted_by_splash) - 1])
-        result['sellerId'] = int(
-            splitted_by_splash[len(splitted_by_splash) - 2])
-
-    #  E.g: https://shopee.vn/bach-tuoc-cam-xuc-2-mat-cam-xuc-do-choi-bach-tuoc-co-the-dao-nguoc-tam-trang-bach-tuoc-sang-trong-i.283338743.9918567180 //id shop first, then id item
-    else:
-        splitted_by_dot = url.split('.')
-
-        result['itemId'] = int(splitted_by_dot[len(splitted_by_dot) - 1])
-        result['sellerId'] = int(splitted_by_dot[len(splitted_by_dot) - 2])
-
-    return result
+    return int((splitted_url_by_dash[-1]).replace('p', ''))
 
 
 '''
 **@return** int number which is current category id 
 '''
 def proccess_category_url(url: str) -> int:
-    category_id = -1
     if url.find('?') > -1 and 'search' not in url:
         url = url[0:url.find('?')]
-    if '-cat.' in url:
-        category_id = int(url.split('.')[-1])
-    elif 'subcategory=' in url:
-        category_id = int(url.split('subcategory=')[-1])
-    return category_id
+    splitted_by_slash = url.split('/')
+    category_id = splitted_by_slash[-1].replace('c', '')
+    return int(category_id)
 
 
 def convert_string_to_int(string: str) -> int:
@@ -65,16 +48,19 @@ def convert_string_to_int(string: str) -> int:
     return int(number)
 
 
-def calculate_rating(rates: list) -> float:
+def calculate_rating(percent: str) -> float:
     rating = 0.0
-    for rate in rates:
-        star = rate.get_attribute('style')
-        star = star.replace('width:', '')
-        star = star.replace('%;', '')
-        rating += round(float(star.strip())/100, 1)
+
+    p = percent.replace('width:', '')
+    p = p.replace('%;', '')
+    rating += round((float(p.strip()) * 5)/100, 1)
 
     return rating
 
+def get_total_review(review: str) -> int:
+    review = review.replace('(', '')
+    review = review.replace(')', '')
+    return int(review)
 
 def get_current_time_in_ms() -> int:
     return round(time.time() * 1000)
@@ -86,7 +72,7 @@ def process_item_price(price: str) -> int:
 
 
 def extract_background_image_url(dom_object: object) -> str:
-    # background-image: url("https://cf.shopee.vn/file/ee5e00f2460509388cd01a23fa8115bf"); background-size: contain; background-repeat: no-repeat;
+    # background-image: url("https://cf.tiki.vn/file/ee5e00f2460509388cd01a23fa8115bf"); background-size: contain; background-repeat: no-repeat;
     string = dom_object.get_attribute('style')
     start = string.find('url("') + 5 # 5 characters in url("
     end = string.find('")')

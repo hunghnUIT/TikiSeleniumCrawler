@@ -7,10 +7,10 @@ client = pymongo.MongoClient(
 
 try:
     info = client.server_info()
-    db_shopee = client['SHOPEE']
-    col_item = db_shopee['ItemsShopee']
-    col_item_price = db_shopee['ItemPriceShopee']
+    db_tiki = client['TIKI']
+    col_item = db_tiki['ItemsTiki']
+    col_item_price = db_tiki['ItemPriceTiki']
     db_user = client['USER']
-    col_tracked_item = db_user['TrackedItemsShopee']
+    col_tracked_item = db_user['TrackedItemsTiki']
 except Exception:
     print("Unable to connect to the server.")
