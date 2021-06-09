@@ -1,4 +1,11 @@
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+
 from config.redis import redis_client as redis
 from config.db import col_tracked_item
 
@@ -9,14 +16,15 @@ from settings import (
     CLASS_NAME_ITEM_NAME, CLASS_NAME_ITEM_RATING,
     CLASS_NAME_ITEM_PRICE, CLASS_NAME_ITEM_IMAGE,
     CLASS_NAME_ITEM_TOTAL_REVIEW, CLASS_NAME_ITEM_CATEGORY_ID,
-    CLASS_NAME_THUMBNAIL,
-    REDIS_TRACKED_ITEMS_HASH_NAME, REDIS_REPRESENTATIVE_TRUE_VALUE,
+    CLASS_NAME_THUMBNAIL, CLASS_NAME_SCROLL_TO_REVIEW_BUTTON,
+    CLASS_NAME_ITEM_SELLER,
+    REDIS_TRACKED_ITEMS_HASH_NAME, REDIS_REPRESENTATIVE_TRUE_VALUE, WAIT_TIME_LOAD_PAGE,
 )
 
 # Functions
 from helper import (
     get_item_id, calculate_rating,
-    convert_string_to_int, get_current_time_in_ms,
+    convert_string_to_int, get_current_time_in_ms, proccess_category_url,
     process_item_price, extract_background_image_url,
     map_extract_image_url, get_total_review,
 )
@@ -25,7 +33,7 @@ import timing_value
 
 
 def extract_data_from_category_dom_object(dom_object: object, category_id: int) -> object:
-    item = {}  # FIXME change to model later.
+    item = {} 
     try:
         product_url = dom_object.get_attribute('href')
         rating = dom_object.find_elements_by_class_name(CLASS_NAME_RATING)
@@ -64,7 +72,7 @@ def extract_data_from_category_dom_object(dom_object: object, category_id: int) 
             'data': None,
         }
 
-# These fields below is usually failed.
+# These fields below is usually failed for category url.
 def extract_field_from_category_dom_object(key: str, dom_object: object) -> any:
     switcher = {
         'thumbnailUrl': dom_object.find_element_by_css_selector(CLASS_NAME_THUMBNAIL).get_attribute('src')
@@ -72,40 +80,73 @@ def extract_field_from_category_dom_object(key: str, dom_object: object) -> any:
     return switcher.get(key, None)
 
 
-# TODO NOT modified yet
-def extract_data_from_item_dom_object(dom_object: object, product_url: str):
-    item = {}  # FIXME change to model later.
+# These fields below is usually failed for item url.
+def extract_field_from_item_dom_object(key: str, dom_object: object, is_trying_again: bool = False) -> any:
     try:
-        info_from_url = get_item_id(product_url)
-        rating = dom_object.find_elements_by_class_name(CLASS_NAME_ITEM_RATING)
-        total_review = dom_object.find_elements_by_class_name(
-            CLASS_NAME_ITEM_TOTAL_REVIEW)
+        if is_trying_again:
+            WebDriverWait(dom_object, WAIT_TIME_LOAD_PAGE).until(
+            EC.presence_of_element_located((By.CLASS_NAME, CLASS_NAME_ITEM_RATING)))
+                
+        switcher = {
+            'rating': dom_object.find_element_by_class_name(CLASS_NAME_ITEM_RATING).text,
+            'totalReview': ((dom_object.find_element_by_class_name(CLASS_NAME_ITEM_TOTAL_REVIEW).text).split(' '))[0],
+        }
+        value = switcher.get(key, None)
+    except NoSuchElementException:
+        value = None
+    except TimeoutException:
+        print("Loading rating took too much time!")
+        value = None
+
+    return value
+
+def extract_data_from_item_dom_object(dom_object: object, product_url: str):
+    item = {} 
+    try:
+        # Scroll to the end no matter having review or not
+        # ActionChains(dom_object).send_keys(Keys.END).perform()
+
+        item_id = get_item_id(product_url)
+        seller_id = dom_object.find_element_by_css_selector(CLASS_NAME_ITEM_SELLER).get_attribute('data-view-label')
         item_price = dom_object.find_element_by_class_name(
             CLASS_NAME_ITEM_PRICE).text
-        images = dom_object.find_elements_by_class_name(
+        images = dom_object.find_elements_by_css_selector(
             CLASS_NAME_ITEM_IMAGE)
         category_ids = dom_object.find_elements_by_class_name(
             CLASS_NAME_ITEM_CATEGORY_ID)
-        href = category_ids[len(category_ids) - 1].get_attribute('href') if category_ids[len(category_ids) - 1] else ''
-        splitted_href = href.split('.') if href else []
-        category_id = 0
-        if splitted_href:
-            category_id = splitted_href[len(splitted_href) - 1]
+        href = category_ids[-2].get_attribute('href') if category_ids else ''
+        category_id = proccess_category_url(href) if href else 0
+        scroll_to_review_button = dom_object.find_elements_by_css_selector(CLASS_NAME_SCROLL_TO_REVIEW_BUTTON)
+        rating = 0.0
+        total_review = 0
+        if scroll_to_review_button:
+            scroll_to_review_button[0].click()
+            try:
+                rating = dom_object.find_element_by_class_name(CLASS_NAME_ITEM_RATING).text
+                total_review = ((dom_object.find_element_by_class_name(CLASS_NAME_ITEM_TOTAL_REVIEW).text).split(' '))[0]
+            except NoSuchElementException as err:
+                rating = None
+                total_review = None
 
-        item['id'] = info_from_url['itemId']
+        item['id'] = item_id
         item['name'] = dom_object.find_element_by_css_selector(
-            f'.{CLASS_NAME_ITEM_NAME} span').text
-        item['sellerId'] = info_from_url['sellerId']
+            CLASS_NAME_ITEM_NAME).text
+        item['sellerId'] = int(seller_id)
         item['categoryId'] = int(category_id)
         item['productUrl'] = product_url
-        item['rating'] = float(rating[0].text) if rating else 0.0
-        item['totalReview'] = convert_string_to_int(
-            total_review[1].text) if total_review else 0
+        item['rating'] = float(rating) if rating is not None else None
+        item['totalReview'] = int(total_review) if total_review is not None else None
         item['update'] = get_current_time_in_ms()
         item['expired'] = timing_value.expiredTime
         item['price'] = process_item_price(item_price)
-        item['thumbnailUrl'] = extract_background_image_url(images[0])
+        item['thumbnailUrl'] = images[0].get_attribute('src')
         item['images'] = map_extract_image_url(images)
+
+        if not item['thumbnailUrl'] or item['rating'] is None or item['totalReview'] is None:
+            return {
+                'success': False,
+                'data': item,
+            }
 
         return {
             'success': True,

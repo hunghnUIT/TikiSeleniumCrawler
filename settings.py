@@ -66,10 +66,11 @@ MAXIMUM_PAGE_NUMBER = 208
 LOAD_ITEM_SLEEP_TIME = 0.3 # second
 
 # configs about crawling item by item detail
-CLASS_NAME_ITEM_BRIEF = 'product-briefing'
-CLASS_NAME_ITEM_PRICE = '_3e_UQT'
-CLASS_NAME_ITEM_NAME = 'attM6y'
-CLASS_NAME_ITEM_RATING = '_1mYa1t'
-CLASS_NAME_ITEM_TOTAL_REVIEW = 'OitLRu'
-CLASS_NAME_ITEM_IMAGE = '_2GchKS'
-CLASS_NAME_ITEM_CATEGORY_ID = '_3YDLCj'
+CLASS_NAME_ITEM_PRICE = 'product-price__current-price'
+CLASS_NAME_ITEM_NAME = 'h1[class=title]' # CSS selector
+CLASS_NAME_ITEM_RATING = 'review-rating__point'
+CLASS_NAME_ITEM_TOTAL_REVIEW = 'review-rating__total'
+CLASS_NAME_ITEM_IMAGE = '.style__ProductImagesStyle-sc-1e5ea5s-0 .PictureV2__StyledWrapImage-tfuu67-0 img' # CSS Selector
+CLASS_NAME_ITEM_CATEGORY_ID = 'breadcrumb-item'
+CLASS_NAME_SCROLL_TO_REVIEW_BUTTON = '.indexstyle__Review-qd1z2k-3.hqeXws a[class=number]'
+CLASS_NAME_ITEM_SELLER = 'div[data-view-id="pdp_store_seller.follow"]'

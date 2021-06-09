@@ -81,5 +81,5 @@ def extract_background_image_url(dom_object: object) -> str:
 def map_extract_image_url(arr:List[object]) -> List[str]:
     res = []
     for el in arr:
-        res.append(extract_background_image_url(el))
+        res.append(el.get_attribute('src'))
     return res

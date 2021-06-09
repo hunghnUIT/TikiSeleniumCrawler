@@ -16,6 +16,7 @@ from settings import (
     CLASS_NAME_CARD_ITEM, MAXIMUM_PAGE_NUMBER,
     LOAD_ITEM_SLEEP_TIME, CLASS_NAME_ITEM_PRICE,
     CLASS_NAME_PAGINATION_BUTTONS, CLASS_NAME_BUTTON_NEXT_PAGE,
+    CLASS_NAME_ITEM_SELLER,
     HEADLESS, FIREFOX_PROFILE,
 )
 
@@ -25,7 +26,8 @@ from helper import (
 )
 from controllers.item import (
     extract_data_from_category_dom_object, extract_field_from_category_dom_object,
-    extract_data_from_item_dom_object, store_tracked_items_to_redis
+    extract_data_from_item_dom_object, store_tracked_items_to_redis,
+    extract_field_from_item_dom_object,
 )
 import timing_value
 from services.item import save_item_to_db
@@ -162,13 +164,48 @@ def loop_items(driver, urls):
             myElem = WebDriverWait(driver, WAIT_TIME_LOAD_PAGE).until(
                 EC.presence_of_element_located((By.CLASS_NAME, CLASS_NAME_ITEM_PRICE)))
 
+            WebDriverWait(driver, WAIT_TIME_LOAD_PAGE).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, CLASS_NAME_ITEM_SELLER)))
+
             result = extract_data_from_item_dom_object(driver, url)
             if result and result['success']:
                 # print(result['data'])
-                # print('ok')
+                print('ok')
                 save_item_to_db(result['data'])
-            else:
-                print('error')
+            elif result and not result['success']:
+                item_info = result['data']
+
+                failed_field_count = None # init variable
+                # Try again three time
+                for i in range(3):
+                    if item_info:  # A few fields failed
+                        failed_field_count = 0  # assign value variable
+                        for key in item_info:
+                            if item_info[key] is None:
+                                failed_field_count += 1
+                                if i < 1:
+                                    value = extract_field_from_item_dom_object(key=key, dom_object=driver)
+                                else:
+                                    value = extract_field_from_item_dom_object(key=key, dom_object=driver, is_trying_again=True)
+
+                                if value:
+                                    item_info[key] = value
+                                    failed_field_count -= 1
+
+                        # Got all fields -> no need to try one more time
+                        if not failed_field_count:
+                            print(f'Done after {i+1} times')
+                            save_item_to_db(item_info)
+                            break
+                        elif i == 2 and failed_field_count:  # Means try again third time, start from 0
+                            print('Error because of "rating" or "totalReview" field or both')
+
+                    else:  # entire item failed
+                        result = extract_data_from_item_dom_object(driver, url)
+                        if result['success']:
+                            # print(result['data'])
+                            save_item_to_db(result['data'])
+
         except TimeoutException:
             print("Loading took too much time!")
         except Exception as err:
