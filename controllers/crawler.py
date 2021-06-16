@@ -6,9 +6,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
+import threading
 
 # Settings
 from settings import (
@@ -17,7 +18,8 @@ from settings import (
     LOAD_ITEM_SLEEP_TIME, CLASS_NAME_ITEM_PRICE,
     CLASS_NAME_PAGINATION_BUTTONS, CLASS_NAME_BUTTON_NEXT_PAGE,
     CLASS_NAME_ITEM_SELLER,
-    HEADLESS, FIREFOX_PROFILE,
+    HEADLESS, FIREFOX_PROFILE, ALLOWED_CATEGORIES_TO_CRAWL, 
+    WILL_CRAWL_ALL_CATEGORIES, MAX_THREAD_NUMBER_FOR_CATEGORY,
 )
 
 # Functions
@@ -31,6 +33,7 @@ from controllers.item import (
 )
 import timing_value
 from services.item import save_item_to_db
+from config.db import col_category
 
 
 '''
@@ -58,9 +61,9 @@ def crawl_with_category_url(url: str, jobs_queue: Queue, driver: webdriver = Non
     category_id = proccess_category_url(url)
 
     page = 1
-    last_page_item_number = 0
     count = 0 # temp
 
+    print(f'Start to crawl category ID: {category_id}')
     while True:
         driver.get(url)
 
@@ -234,3 +237,20 @@ def crawl_with_item_urls(urls: List[str], jobs_queue: Queue):
         loop_items(driver, urls_from_queue)
 
     driver.quit()
+
+def crawl_all_items(start_index, queue, thread_count_at_start):
+    timing_value.init_timing_value()
+    store_tracked_items_to_redis()
+
+    cates = list(col_category.find())
+
+    for idx, cate in enumerate(cates):
+        if (cate['rootId'] in ALLOWED_CATEGORIES_TO_CRAWL or WILL_CRAWL_ALL_CATEGORIES) and idx >= start_index:
+            url = cate["categoryUrl"]
+
+            thread_allowed_left = threading.active_count() - thread_count_at_start - 1  # 1 is thread using for calling this function, I guess
+
+            if thread_allowed_left < MAX_THREAD_NUMBER_FOR_CATEGORY:
+                (threading.Thread(target=crawl_with_category_url, args=[url, queue, None])).start()
+            else:
+                queue.put(url)

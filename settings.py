@@ -37,6 +37,7 @@ firefox_profile.set_preference("plugin.default_plugin_disabled", False)
 #endregion
 
 # Global variable
+CRAWLER_ID = '00'
 TIKI = 'tiki'
 REDIS_TRACKED_ITEMS_HASH_NAME = 'trackedItems-tiki'
 RECEIVE_NOTIFICATION_SERVICE_ADDRESS = 'http://10.255.255.8:5050/notify-for-item' # param: itemId=...., newPrice=..., platform=...
@@ -44,8 +45,16 @@ A_DAY_IN_MS = 86400000 # = 24hrs
 REDIS_REPRESENTATIVE_TRUE_VALUE = 1
 HEADLESS = True
 FIREFOX_PROFILE = firefox_profile
-MAX_THREAD_NUMBER_FOR_ITEM = 5
-MAX_THREAD_NUMBER_FOR_CATEGORY = 2
+MAX_THREAD_NUMBER_FOR_ITEM = 2
+MAX_THREAD_NUMBER_FOR_CATEGORY = 5
+
+# After receiving crawling message
+ALLOWED_CATEGORIES_TO_CRAWL = {
+    1789: 'Điện thoại máy tính bảng',
+    1815: 'Phụ kiện thiết bị số',
+    1846: 'Laptop - Thiết bị IT',
+}
+WILL_CRAWL_ALL_CATEGORIES = False
 
 # Settings for crawler
 TIME_BETWEEN_CRAWLING_IN_HOUR = 8

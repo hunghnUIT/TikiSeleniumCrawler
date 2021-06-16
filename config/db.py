@@ -10,6 +10,7 @@ try:
     db_tiki = client['TIKI']
     col_item = db_tiki['ItemsTiki']
     col_item_price = db_tiki['ItemPriceTiki']
+    col_category = db_tiki['CategoriesTiki']
     db_user = client['USER']
     col_tracked_item = db_user['TrackedItemsTiki']
 except Exception:
