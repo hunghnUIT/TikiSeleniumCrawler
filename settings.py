@@ -63,11 +63,11 @@ WAIT_TIME_LOAD_PAGE = 3 # seconds
 NUMBER_PARTS_PAGE_HEIGHT = 7 # Assuming an page have this number of part corresponding to its height 
 
 # configs about crawling items by category
-CLASS_NAME_CARD_ITEM = 'product-item' # card component contains all item's info
+CLASS_NAME_CARD_ITEM = '.product-item' # card component contains all item's info
 CLASS_NAME_NAME_ITEM = '.name span' # For CSS selector
-CLASS_NAME_PRICE = 'price-discount__price' # string 5.800.000  # discount or not still use this class name
-CLASS_NAME_RATING = 'rating__average' # Get attribute width * 5 <=> rating
-CLASS_NAME_REVIEW_NUMBER = 'review'
+CLASS_NAME_PRICE = '.price-discount__price' # string 5.800.000  # discount or not still use this class name
+CLASS_NAME_RATING = '.average' # old class: '.rating__average' # Get attribute width * 5 <=> rating
+CLASS_NAME_REVIEW_NUMBER = '.styles__StyledQtySold-sc-732h27-2.bQsmEJ' # old class '.review' # NOTE Update 28/6/2021 Tiki replaced rating count by total sold so I'm temporary using "sold" for totalReview
 CLASS_NAME_PAGINATION_BUTTONS = '.Pagination__Root-cyke21-0 li' # CSS selector
 CLASS_NAME_THUMBNAIL = '.thumbnail img' # CSS selector
 CLASS_NAME_BUTTON_NEXT_PAGE = '.tikicon.icon-arrow-back' # CSS selector
@@ -75,11 +75,12 @@ MAXIMUM_PAGE_NUMBER = 208
 LOAD_ITEM_SLEEP_TIME = 0.3 # second
 
 # configs about crawling item by item detail
-CLASS_NAME_ITEM_PRICE = 'product-price__current-price'
+CLASS_NAME_ITEM_PRICE = '.product-price__current-price'
 CLASS_NAME_ITEM_NAME = 'h1[class=title]' # CSS selector
-CLASS_NAME_ITEM_RATING = 'review-rating__point'
-CLASS_NAME_ITEM_TOTAL_REVIEW = 'review-rating__total'
+CLASS_NAME_ITEM_REVIEW_DIV = '.indexstyle__Review-qd1z2k-3.hqeXws'
+CLASS_NAME_ITEM_RATING = 'div > div > div:nth-child(2)' # this inside review_div
+CLASS_NAME_ITEM_TOTAL_REVIEW = 'a[class=number]'
 CLASS_NAME_ITEM_IMAGE = '.style__ProductImagesStyle-sc-1e5ea5s-0 .PictureV2__StyledWrapImage-tfuu67-0 img' # CSS Selector
-CLASS_NAME_ITEM_CATEGORY_ID = 'breadcrumb-item'
-CLASS_NAME_SCROLL_TO_REVIEW_BUTTON = '.indexstyle__Review-qd1z2k-3.hqeXws a[class=number]'
+CLASS_NAME_ITEM_CATEGORY_ID = '.breadcrumb-item'
 CLASS_NAME_ITEM_SELLER = 'div[data-view-id="pdp_store_seller.follow"]'
+CLASS_NAME_ITEM_OUT_OF_STOCK = '.style__StyledNotiMessage-sc-18zbm1q-0.hFMOJQ'

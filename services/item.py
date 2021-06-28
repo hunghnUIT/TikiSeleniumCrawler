@@ -9,6 +9,8 @@ def save_item(found_item, item) -> object:
     if found_item:
         updating_item = {}
 
+        if 'sellerId' in item:
+            updating_item['sellerId'] = item['sellerId']
         updating_item['lastPriceChange'] = int(
             item['price']) - found_item['currentPrice']
         updating_item['name'] = item['name']

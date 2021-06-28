@@ -29,6 +29,7 @@ def proccess_category_url(url: str) -> int:
 
 def convert_string_to_int(string: str) -> int:
     string = string.replace('₫', '')
+    string = string.replace('+', '')
     number = 0
     if not string.isdigit():
         unit = ''
@@ -51,15 +52,20 @@ def convert_string_to_int(string: str) -> int:
 def calculate_rating(percent: str) -> float:
     rating = 0.0
 
+    # width: 94%; or width: 94%
     p = percent.replace('width:', '')
-    p = p.replace('%;', '')
+    if '%;' in percent:
+        p = p.replace('%;', '')
+    else:
+        p = p.replace('%', '')
     rating += round((float(p.strip()) * 5)/100, 1)
 
     return rating
 
 def get_total_review(review: str) -> int:
-    review = review.replace('(', '')
-    review = review.replace(')', '')
+    # (Xem 11 đánh giá)
+    review = review.replace('(Xem ', '')
+    review = review.replace(' đánh giá)', '')
     return int(review)
 
 def get_current_time_in_ms() -> int:

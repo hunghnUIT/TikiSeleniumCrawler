@@ -17,7 +17,7 @@ from settings import (
     CLASS_NAME_CARD_ITEM, MAXIMUM_PAGE_NUMBER,
     LOAD_ITEM_SLEEP_TIME, CLASS_NAME_ITEM_PRICE,
     CLASS_NAME_PAGINATION_BUTTONS, CLASS_NAME_BUTTON_NEXT_PAGE,
-    CLASS_NAME_ITEM_SELLER,
+    CLASS_NAME_ITEM_SELLER, CLASS_NAME_ITEM_OUT_OF_STOCK,
     HEADLESS, FIREFOX_PROFILE, ALLOWED_CATEGORIES_TO_CRAWL, 
     WILL_CRAWL_ALL_CATEGORIES, MAX_THREAD_NUMBER_FOR_CATEGORY,
 )
@@ -72,7 +72,7 @@ def crawl_with_category_url(url: str, jobs_queue: Queue, driver: webdriver = Non
 
         try:
             myElem = WebDriverWait(driver, WAIT_TIME_LOAD_PAGE).until(
-                EC.presence_of_element_located((By.CLASS_NAME, CLASS_NAME_CARD_ITEM)))
+                EC.presence_of_element_located((By.CSS_SELECTOR, CLASS_NAME_CARD_ITEM)))
 
             # Scroll to deal with lazy load.
             actions = ActionChains(driver)
@@ -81,7 +81,7 @@ def crawl_with_category_url(url: str, jobs_queue: Queue, driver: webdriver = Non
                 sleep(LOAD_ITEM_SLEEP_TIME)
 
             # query all items
-            items = driver.find_elements_by_class_name(CLASS_NAME_CARD_ITEM)
+            items = driver.find_elements_by_css_selector(CLASS_NAME_CARD_ITEM)
 
             # if len(items) == last_page_item_number and last_page_item_number < 50:
             #     print(f'Done crawling category {category_id}, last page: {page - 1}')
@@ -165,15 +165,24 @@ def loop_items(driver, urls):
             driver.get(url)
 
             myElem = WebDriverWait(driver, WAIT_TIME_LOAD_PAGE).until(
-                EC.presence_of_element_located((By.CLASS_NAME, CLASS_NAME_ITEM_PRICE)))
+                EC.presence_of_element_located((By.CSS_SELECTOR, CLASS_NAME_ITEM_PRICE)))
 
-            WebDriverWait(driver, WAIT_TIME_LOAD_PAGE).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, CLASS_NAME_ITEM_SELLER)))
+            no_seller = False
+            try:
+                WebDriverWait(driver, WAIT_TIME_LOAD_PAGE).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, CLASS_NAME_ITEM_SELLER)))
+            except TimeoutException:
+                # out of stock and stop selling using the same class name`
+                out_of_stock = driver.find_elements_by_css_selector(CLASS_NAME_ITEM_OUT_OF_STOCK)
+                if out_of_stock: 
+                    no_seller = True
+                else:
+                    print('Can not find seller. Skip this item')
+                    continue
 
-            result = extract_data_from_item_dom_object(driver, url)
+            result = extract_data_from_item_dom_object(driver, url, no_seller)
             if result and result['success']:
                 # print(result['data'])
-                print('ok')
                 save_item_to_db(result['data'])
             elif result and not result['success']:
                 item_info = result['data']
@@ -197,14 +206,14 @@ def loop_items(driver, urls):
 
                         # Got all fields -> no need to try one more time
                         if not failed_field_count:
-                            print(f'Done after {i+1} times')
+                            # print(f'Done after {i+1} times')
                             save_item_to_db(item_info)
                             break
                         elif i == 2 and failed_field_count:  # Means try again third time, start from 0
                             print('Error because of "rating" or "totalReview" field or both')
 
                     else:  # entire item failed
-                        result = extract_data_from_item_dom_object(driver, url)
+                        result = extract_data_from_item_dom_object(driver, url, no_seller)
                         if result['success']:
                             # print(result['data'])
                             save_item_to_db(result['data'])
