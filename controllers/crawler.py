@@ -38,8 +38,8 @@ from config.db import col_category
 
 '''
 Function receive a category URL at a moment, start at page #1, then crawl to the last page and exit browser.
-@route      {{BASE_URL}}/crawl-category?url=https://shopee.vn/category-cat.id...
 @method     POST
+@body       JSON {urls: List[str]}
 @body       None
 '''
 def crawl_with_category_url(url: str, jobs_queue: Queue, driver: webdriver = None, is_in_recursive: bool = False):

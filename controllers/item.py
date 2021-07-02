@@ -146,8 +146,11 @@ def extract_data_from_item_dom_object(dom_object: object, product_url: str, no_s
         item['update'] = get_current_time_in_ms()
         item['expired'] = timing_value.expiredTime
         item['price'] = process_item_price(item_price)
-        item['thumbnailUrl'] = images[0].get_attribute('src')
-        item['images'] = map_extract_image_url(images)
+        if images:
+            item['thumbnailUrl'] = images[0].get_attribute('src')
+            item['images'] = map_extract_image_url(images)
+        else:
+            print('Can not get images')
 
         if not item['thumbnailUrl'] or item['rating'] is None or item['totalReview'] is None:
             return {
