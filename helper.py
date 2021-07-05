@@ -1,3 +1,4 @@
+import math
 from re import split
 import time
 from typing import List
@@ -89,3 +90,23 @@ def map_extract_image_url(arr:List[object]) -> List[str]:
     for el in arr:
         res.append(el.get_attribute('src'))
     return res
+
+def to_human_readable_time_format(timestamp: int):
+    hour = math.floor(timestamp / 3600) % 24
+    min = math.floor(timestamp / 60) % 60
+    sec = math.floor(timestamp) % 60
+    result = ''
+
+    if hour:
+        result += f'{hour} {"hours" if hour > 1 else "hour"}'
+
+    if min:
+        if result:
+            result += ' '
+        result += f'{min} {"minutes" if min > 1 else "minute"}'
+
+    if sec:
+        if result:
+            result += ' '
+        result += f'{sec} {"seconds" if sec > 1 else "second"}'
+    return result
